@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		140269C02E0B9329000DD7B4 /* JointBasedAnimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 140269BF2E0B9329000DD7B4 /* JointBasedAnimator.swift */; };
 		148D21542E0991C8001B7561 /* SketchAnimateApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D21532E0991C8001B7561 /* SketchAnimateApp.swift */; };
 		148D21562E0991C8001B7561 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D21552E0991C8001B7561 /* ContentView.swift */; };
 		148D21582E0991CC001B7561 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 148D21572E0991CC001B7561 /* Assets.xcassets */; };
@@ -14,6 +15,18 @@
 		148D21652E0991CC001B7561 /* SketchAnimateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D21642E0991CC001B7561 /* SketchAnimateTests.swift */; };
 		148D216F2E0991CC001B7561 /* SketchAnimateUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D216E2E0991CC001B7561 /* SketchAnimateUITests.swift */; };
 		148D21712E0991CC001B7561 /* SketchAnimateUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D21702E0991CC001B7561 /* SketchAnimateUITestsLaunchTests.swift */; };
+		148D217F2E099274001B7561 /* ObjectType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D217E2E099274001B7561 /* ObjectType.swift */; };
+		148D21812E0992B2001B7561 /* DrawingPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D21802E0992B2001B7561 /* DrawingPath.swift */; };
+		148D21842E0992EC001B7561 /* AnimationType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D21832E0992EC001B7561 /* AnimationType.swift */; };
+		148D21862E09930D001B7561 /* AnimationFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D21852E09930D001B7561 /* AnimationFrame.swift */; };
+		148D21882E099461001B7561 /* DrawingCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D21872E099461001B7561 /* DrawingCanvas.swift */; };
+		148D218B2E0995B6001B7561 /* ObjectDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D218A2E0995B6001B7561 /* ObjectDetector.swift */; };
+		148D218D2E0995D3001B7561 /* AnimationChooser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D218C2E0995D3001B7561 /* AnimationChooser.swift */; };
+		148D21902E099B67001B7561 /* AIAnalysisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D218F2E099B67001B7561 /* AIAnalysisService.swift */; };
+		148D21952E0A44BC001B7561 /* AnimationGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D21942E0A44BC001B7561 /* AnimationGenerator.swift */; };
+		148D21972E0A44E0001B7561 /* AnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D21962E0A44E0001B7561 /* AnimationView.swift */; };
+		148D219F2E0B1208001B7561 /* PreservingAnimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D219E2E0B1208001B7561 /* PreservingAnimator.swift */; };
+		148D21A12E0B1279001B7561 /* AnimationDebugger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D21A02E0B1279001B7561 /* AnimationDebugger.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -34,6 +47,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		140269BF2E0B9329000DD7B4 /* JointBasedAnimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JointBasedAnimator.swift; sourceTree = "<group>"; };
 		148D21502E0991C8001B7561 /* SketchAnimate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SketchAnimate.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		148D21532E0991C8001B7561 /* SketchAnimateApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SketchAnimateApp.swift; sourceTree = "<group>"; };
 		148D21552E0991C8001B7561 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -44,6 +58,18 @@
 		148D216A2E0991CC001B7561 /* SketchAnimateUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SketchAnimateUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		148D216E2E0991CC001B7561 /* SketchAnimateUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SketchAnimateUITests.swift; sourceTree = "<group>"; };
 		148D21702E0991CC001B7561 /* SketchAnimateUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SketchAnimateUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		148D217E2E099274001B7561 /* ObjectType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObjectType.swift; sourceTree = "<group>"; };
+		148D21802E0992B2001B7561 /* DrawingPath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawingPath.swift; sourceTree = "<group>"; };
+		148D21832E0992EC001B7561 /* AnimationType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimationType.swift; sourceTree = "<group>"; };
+		148D21852E09930D001B7561 /* AnimationFrame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimationFrame.swift; sourceTree = "<group>"; };
+		148D21872E099461001B7561 /* DrawingCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawingCanvas.swift; sourceTree = "<group>"; };
+		148D218A2E0995B6001B7561 /* ObjectDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObjectDetector.swift; sourceTree = "<group>"; };
+		148D218C2E0995D3001B7561 /* AnimationChooser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimationChooser.swift; sourceTree = "<group>"; };
+		148D218F2E099B67001B7561 /* AIAnalysisService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAnalysisService.swift; sourceTree = "<group>"; };
+		148D21942E0A44BC001B7561 /* AnimationGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimationGenerator.swift; sourceTree = "<group>"; };
+		148D21962E0A44E0001B7561 /* AnimationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimationView.swift; sourceTree = "<group>"; };
+		148D219E2E0B1208001B7561 /* PreservingAnimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreservingAnimator.swift; sourceTree = "<group>"; };
+		148D21A02E0B1279001B7561 /* AnimationDebugger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimationDebugger.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -94,8 +120,13 @@
 		148D21522E0991C8001B7561 /* SketchAnimate */ = {
 			isa = PBXGroup;
 			children = (
-				148D21532E0991C8001B7561 /* SketchAnimateApp.swift */,
+				148D21932E0A44A8001B7561 /* Animation */,
+				148D218E2E099B53001B7561 /* Services */,
+				148D21892E0995A1001B7561 /* Detection */,
 				148D21552E0991C8001B7561 /* ContentView.swift */,
+				148D21822E0992CB001B7561 /* Models */,
+				148D217D2E099211001B7561 /* Views */,
+				148D21532E0991C8001B7561 /* SketchAnimateApp.swift */,
 				148D21572E0991CC001B7561 /* Assets.xcassets */,
 				148D21592E0991CC001B7561 /* Preview Content */,
 			);
@@ -125,6 +156,54 @@
 				148D21702E0991CC001B7561 /* SketchAnimateUITestsLaunchTests.swift */,
 			);
 			path = SketchAnimateUITests;
+			sourceTree = "<group>";
+		};
+		148D217D2E099211001B7561 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				148D21872E099461001B7561 /* DrawingCanvas.swift */,
+				148D218C2E0995D3001B7561 /* AnimationChooser.swift */,
+				148D21962E0A44E0001B7561 /* AnimationView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		148D21822E0992CB001B7561 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				148D217E2E099274001B7561 /* ObjectType.swift */,
+				148D21802E0992B2001B7561 /* DrawingPath.swift */,
+				148D21832E0992EC001B7561 /* AnimationType.swift */,
+				148D21852E09930D001B7561 /* AnimationFrame.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		148D21892E0995A1001B7561 /* Detection */ = {
+			isa = PBXGroup;
+			children = (
+				148D218A2E0995B6001B7561 /* ObjectDetector.swift */,
+			);
+			path = Detection;
+			sourceTree = "<group>";
+		};
+		148D218E2E099B53001B7561 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				148D218F2E099B67001B7561 /* AIAnalysisService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		148D21932E0A44A8001B7561 /* Animation */ = {
+			isa = PBXGroup;
+			children = (
+				148D21942E0A44BC001B7561 /* AnimationGenerator.swift */,
+				148D219E2E0B1208001B7561 /* PreservingAnimator.swift */,
+				148D21A02E0B1279001B7561 /* AnimationDebugger.swift */,
+				140269BF2E0B9329000DD7B4 /* JointBasedAnimator.swift */,
+			);
+			path = Animation;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -257,8 +336,21 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				148D21952E0A44BC001B7561 /* AnimationGenerator.swift in Sources */,
+				140269C02E0B9329000DD7B4 /* JointBasedAnimator.swift in Sources */,
+				148D218B2E0995B6001B7561 /* ObjectDetector.swift in Sources */,
+				148D21902E099B67001B7561 /* AIAnalysisService.swift in Sources */,
+				148D21862E09930D001B7561 /* AnimationFrame.swift in Sources */,
+				148D217F2E099274001B7561 /* ObjectType.swift in Sources */,
+				148D219F2E0B1208001B7561 /* PreservingAnimator.swift in Sources */,
+				148D21812E0992B2001B7561 /* DrawingPath.swift in Sources */,
+				148D21882E099461001B7561 /* DrawingCanvas.swift in Sources */,
 				148D21562E0991C8001B7561 /* ContentView.swift in Sources */,
+				148D218D2E0995D3001B7561 /* AnimationChooser.swift in Sources */,
+				148D21972E0A44E0001B7561 /* AnimationView.swift in Sources */,
+				148D21842E0992EC001B7561 /* AnimationType.swift in Sources */,
 				148D21542E0991C8001B7561 /* SketchAnimateApp.swift in Sources */,
+				148D21A12E0B1279001B7561 /* AnimationDebugger.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
