@@ -182,6 +182,9 @@ class ReliableSkeletalAnimator {
     
     // MARK: - Animation Logic
     
+    // MARK: - Animation Logic (CORRECTED VERSION)
+    // Replace the animateJointsForWalking function in your SkeletalAnimator.swift file
+
     private static func animateJointsForWalking(
         _ originalJoints: [String: ReliableJoint],
         walkPhase: Double,
@@ -236,12 +239,12 @@ class ReliableSkeletalAnimator {
             joints["head"] = head
         }
         
-        // 4. Move arms
+        // 4. Move arms - NOW USING shoulder position
         if var leftHand = joints["hand_left"],
            let shoulder = joints["shoulder"] {
             leftHand.moveTo(CGPoint(
-                x: leftHand.originalPosition.x + forwardOffset + bodySway + leftArmSwing,
-                y: leftHand.originalPosition.y + bodyBob * 0.5 + leftArmSwing * 0.2
+                x: shoulder.currentPosition.x - 30 + leftArmSwing,  // Connected to shoulder
+                y: shoulder.currentPosition.y + 20 + leftArmSwing * 0.2
             ))
             joints["hand_left"] = leftHand
         }
@@ -249,18 +252,18 @@ class ReliableSkeletalAnimator {
         if var rightHand = joints["hand_right"],
            let shoulder = joints["shoulder"] {
             rightHand.moveTo(CGPoint(
-                x: rightHand.originalPosition.x + forwardOffset + bodySway + rightArmSwing,
-                y: rightHand.originalPosition.y + bodyBob * 0.5 + rightArmSwing * 0.2
+                x: shoulder.currentPosition.x + 30 + rightArmSwing,  // Connected to shoulder
+                y: shoulder.currentPosition.y + 20 + rightArmSwing * 0.2
             ))
             joints["hand_right"] = rightHand
         }
         
-        // 5. Move legs maintaining connection to hip
+        // 5. Move legs - NOW USING hip position to maintain connection
         if var leftFoot = joints["foot_left"],
            let hip = joints["hip"] {
             leftFoot.moveTo(CGPoint(
-                x: leftFoot.originalPosition.x + forwardOffset + bodySway + leftLegSwing,
-                y: leftFoot.originalPosition.y + bodyBob * 0.3 + (leftLegSwing > 0 ? -abs(leftLegSwing) * 0.2 : 0)
+                x: hip.currentPosition.x - 10 + leftLegSwing,  // Connected to hip
+                y: hip.currentPosition.y + 50 + (leftLegSwing > 0 ? -abs(leftLegSwing) * 0.2 : 0)
             ))
             joints["foot_left"] = leftFoot
         }
@@ -268,15 +271,14 @@ class ReliableSkeletalAnimator {
         if var rightFoot = joints["foot_right"],
            let hip = joints["hip"] {
             rightFoot.moveTo(CGPoint(
-                x: rightFoot.originalPosition.x + forwardOffset + bodySway + rightLegSwing,
-                y: rightFoot.originalPosition.y + bodyBob * 0.3 + (rightLegSwing > 0 ? -abs(rightLegSwing) * 0.2 : 0)
+                x: hip.currentPosition.x + 10 + rightLegSwing,  // Connected to hip
+                y: hip.currentPosition.y + 50 + (rightLegSwing > 0 ? -abs(rightLegSwing) * 0.2 : 0)
             ))
             joints["foot_right"] = rightFoot
         }
         
         return joints
     }
-    
     // MARK: - Convert to Paths
     
     private static func convertToPaths(
