@@ -74,68 +74,303 @@ class AIAnalysisService: ObservableObject {
     
     // MARK: - Detection Methods
     
+    // Replace the detection methods in AIAnalysisService.swift with these improved versions:
+
+
+    // Replace the problematic section in detectStickFigure function:
+
     private func detectStickFigure(_ paths: [DrawingPath], bounds: CGRect) -> Bool {
+        print("🤔 Checking stick figure...")
+        
         // Look for main body (vertical line)
-        let hasMainBody = paths.contains { path in
+        var bodyPathIndex: Int? = nil
+        let bodyPaths = paths.enumerated().compactMap { (index, path) -> (Int, DrawingPath)? in
             let pathBounds = path.boundingBox
-            return pathBounds.height > pathBounds.width &&
-                   pathBounds.height > 40 &&
-                   pathBounds.height > bounds.height * 0.3
+            let verticalness = pathBounds.height / max(pathBounds.width, 1)
+            if verticalness > 1.5 && pathBounds.height > 40 {
+                if bodyPathIndex == nil {
+                    bodyPathIndex = index // Store the first body path index
+                }
+                return (index, path)
+            }
+            return nil
         }
         
-        // Count limbs (horizontal-ish lines)
-        let limbCount = paths.filter { path in
+        guard let mainBodyIndex = bodyPathIndex else {
+            print("  ❌ No vertical body found")
+            return false
+        }
+        
+        // Count limbs (lines extending from body area) - excluding the body path by index
+        let mainBodyBounds = paths[mainBodyIndex].boundingBox
+        let limbCount = paths.enumerated().filter { (index, path) in
+            // Skip the body path by comparing indices instead of references
+            guard index != mainBodyIndex else { return false }
+            
             let pathBounds = path.boundingBox
-            return pathBounds.width > pathBounds.height && pathBounds.width > 20
+            let pathCenter = CGPoint(x: pathBounds.midX, y: pathBounds.midY)
+            
+            // Check if this path extends from the body area
+            let nearBody = abs(pathCenter.x - mainBodyBounds.midX) < mainBodyBounds.width + 50
+            let isLimbLike = pathBounds.width > 20 || pathBounds.height > 20
+            
+            return nearBody && isLimbLike
         }.count
         
-        // Stick figure: main body + 2-4 limbs
-        let validPathCount = paths.count >= 3 && paths.count <= 8
-        let result = hasMainBody && limbCount >= 2 && validPathCount
-        
-        if result {
-            print("  - Main body: ✅")
-            print("  - Limb count: \(limbCount)")
-            print("  - Valid path count: \(validPathCount)")
+        // Check for head (circular path near top of body)
+        let hasHead = paths.contains { path in
+            let pathBounds = path.boundingBox
+            let aspectRatio = pathBounds.width / pathBounds.height
+            let nearTopOfBody = pathBounds.midY < mainBodyBounds.minY + 30
+            return aspectRatio > 0.6 && aspectRatio < 1.6 && path.points.count > 8 && nearTopOfBody
         }
+        
+        let validPathCount = paths.count >= 3 && paths.count <= 8
+        let result = bodyPaths.count >= 1 && limbCount >= 2 && validPathCount
+        
+        print("  📊 Body paths: \(bodyPaths.count), Limbs: \(limbCount), Has head: \(hasHead)")
+        print("  📊 Valid path count: \(validPathCount), Total paths: \(paths.count)")
+        print("  🎯 Stick figure result: \(result)")
+        
+        // Bonus points for having a head
+        return result && (limbCount >= 3 || hasHead)
+    }
+    // Replace the box detection methods in AIAnalysisService.swift with these improved versions:
+
+    private func detectBox(_ paths: [DrawingPath], aspectRatio: Double) -> Bool {
+        print("🤔 Checking box...")
+        
+        guard paths.count >= 1 && paths.count <= 6 else {
+            print("  ❌ Wrong path count for box: \(paths.count)")
+            return false
+        }
+        
+        let bounds = calculateDrawingBounds(paths)
+        
+        // Check if overall shape is roughly rectangular
+        let isRoughlyRectangular = aspectRatio > 0.4 && aspectRatio < 2.5 // More forgiving
+        
+        // Look for box-like characteristics
+        var boxScore = 0
+        
+        // 1. Check for rectangular overall bounds
+        if isRoughlyRectangular {
+            boxScore += 2
+            print("  ✅ Rectangular bounds (aspect: \(String(format: "%.2f", aspectRatio)))")
+        }
+        
+        // 2. Check for paths that form sides of a rectangle
+        let sideDetection = analyzeBoxSides(paths, bounds: bounds)
+        boxScore += sideDetection.score
+        
+        // 3. Check if paths roughly outline a rectangular perimeter
+        let perimeterScore = analyzeRectangularPerimeter(paths, bounds: bounds)
+        boxScore += perimeterScore
+        
+        // 4. Bonus for having 4 distinct segments (like 4 sides)
+        if paths.count == 4 {
+            boxScore += 1
+            print("  ✅ Has 4 paths (like 4 sides)")
+        }
+        
+        // 5. Check for right-angle corners
+        let cornerScore = analyzeBoxCorners(paths, bounds: bounds)
+        boxScore += cornerScore
+        
+        let result = boxScore >= 4 // Need at least 4 points to be considered a box
+        
+        print("  📊 Box analysis:")
+        print("    - Rectangular bounds: \(isRoughlyRectangular)")
+        print("    - Side detection: \(sideDetection.score)/3")
+        print("    - Perimeter score: \(perimeterScore)/2")
+        print("    - Corner score: \(cornerScore)/2")
+        print("    - Total score: \(boxScore)/8")
+        print("  🎯 Box result: \(result)")
         
         return result
     }
-    
+
+    // Helper struct for side analysis
+    private struct BoxSideAnalysis {
+        let score: Int
+        let topSides: Int
+        let bottomSides: Int
+        let leftSides: Int
+        let rightSides: Int
+    }
+
+    private func analyzeBoxSides(_ paths: [DrawingPath], bounds: CGRect) -> BoxSideAnalysis {
+        var topSides = 0
+        var bottomSides = 0
+        var leftSides = 0
+        var rightSides = 0
+        
+        for path in paths {
+            let pathBounds = path.boundingBox
+            let pathCenter = CGPoint(x: pathBounds.midX, y: pathBounds.midY)
+            
+            // Check which side of the rectangle this path might represent
+            let nearTop = pathCenter.y < bounds.minY + bounds.height * 0.3
+            let nearBottom = pathCenter.y > bounds.maxY - bounds.height * 0.3
+            let nearLeft = pathCenter.x < bounds.minX + bounds.width * 0.3
+            let nearRight = pathCenter.x > bounds.maxX - bounds.width * 0.3
+            
+            // Check if path is roughly horizontal (for top/bottom)
+            let isHorizontalish = pathBounds.width > pathBounds.height * 0.5
+            
+            // Check if path is roughly vertical (for left/right)
+            let isVerticalish = pathBounds.height > pathBounds.width * 0.5
+            
+            if nearTop && isHorizontalish { topSides += 1 }
+            if nearBottom && isHorizontalish { bottomSides += 1 }
+            if nearLeft && isVerticalish { leftSides += 1 }
+            if nearRight && isVerticalish { rightSides += 1 }
+        }
+        
+        // Score based on how many sides we found
+        var score = 0
+        if topSides > 0 { score += 1 }
+        if bottomSides > 0 { score += 1 }
+        if leftSides > 0 { score += 1 }
+        if rightSides > 0 { score += 1 }
+        
+        // Bonus if we have opposing sides
+        if topSides > 0 && bottomSides > 0 { score += 1 }
+        if leftSides > 0 && rightSides > 0 { score += 1 }
+        
+        print("    - Sides: T:\(topSides) B:\(bottomSides) L:\(leftSides) R:\(rightSides)")
+        
+        return BoxSideAnalysis(
+            score: min(score, 3), // Cap at 3
+            topSides: topSides,
+            bottomSides: bottomSides,
+            leftSides: leftSides,
+            rightSides: rightSides
+        )
+    }
+
+    private func analyzeRectangularPerimeter(_ paths: [DrawingPath], bounds: CGRect) -> Int {
+        // Check if the paths roughly trace the perimeter of the bounding rectangle
+        var perimeterCoverage = 0
+        let tolerance: CGFloat = 30
+        
+        for path in paths {
+            guard !path.points.isEmpty else { continue }
+            
+            let firstPoint = path.points.first!
+            let lastPoint = path.points.last!
+            
+            // Check if path runs along any edge of the bounding box
+            let runsAlongTop = abs(firstPoint.y - bounds.minY) < tolerance || abs(lastPoint.y - bounds.minY) < tolerance
+            let runsAlongBottom = abs(firstPoint.y - bounds.maxY) < tolerance || abs(lastPoint.y - bounds.maxY) < tolerance
+            let runsAlongLeft = abs(firstPoint.x - bounds.minX) < tolerance || abs(lastPoint.x - bounds.minX) < tolerance
+            let runsAlongRight = abs(firstPoint.x - bounds.maxX) < tolerance || abs(lastPoint.x - bounds.maxX) < tolerance
+            
+            if runsAlongTop || runsAlongBottom || runsAlongLeft || runsAlongRight {
+                perimeterCoverage += 1
+            }
+        }
+        
+        print("    - Perimeter coverage: \(perimeterCoverage)/\(paths.count) paths")
+        
+        return min(perimeterCoverage, 2) // Cap at 2 points
+    }
+
+    private func analyzeBoxCorners(_ paths: [DrawingPath], bounds: CGRect) -> Int {
+        // Look for right-angle turns or corners
+        var cornerScore = 0
+        
+        for path in paths {
+            if hasRightAngleTurns(path) {
+                cornerScore += 1
+            }
+        }
+        
+        print("    - Right-angle corners found: \(cornerScore)")
+        
+        return min(cornerScore, 2) // Cap at 2 points
+    }
+
+    private func hasRightAngleTurns(_ path: DrawingPath) -> Bool {
+        let points = path.points
+        guard points.count >= 3 else { return false }
+        
+        // Sample points to check for right angles
+        let sampleIndices = stride(from: 0, to: points.count - 2, by: max(1, points.count / 8))
+        
+        for i in sampleIndices {
+            guard i + 2 < points.count else { continue }
+            
+            let p1 = points[i]
+            let p2 = points[i + 1]
+            let p3 = points[i + 2]
+            
+            // Calculate vectors
+            let v1 = CGPoint(x: p2.x - p1.x, y: p2.y - p1.y)
+            let v2 = CGPoint(x: p3.x - p2.x, y: p3.y - p2.y)
+            
+            // Calculate angle between vectors
+            let dotProduct = v1.x * v2.x + v1.y * v2.y
+            let magnitude1 = sqrt(v1.x * v1.x + v1.y * v1.y)
+            let magnitude2 = sqrt(v2.x * v2.x + v2.y * v2.y)
+            
+            if magnitude1 > 0 && magnitude2 > 0 {
+                let cosAngle = dotProduct / (magnitude1 * magnitude2)
+                let angle = acos(max(-1, min(1, cosAngle))) // Clamp to valid range
+                let angleDegrees = angle * 180 / .pi
+                
+                // Check if it's close to a right angle (90 degrees)
+                if abs(angleDegrees - 90) < 30 { // Within 30 degrees of right angle
+                    return true
+                }
+            }
+        }
+        
+        return false
+    }
     private func detectBall(_ paths: [DrawingPath], aspectRatio: Double) -> Bool {
+        print("🤔 Checking ball...")
+        
         // Simple shapes with roughly square bounds
-        guard paths.count <= 3 && aspectRatio > 0.6 && aspectRatio < 1.6 else {
+        guard paths.count <= 3 && aspectRatio > 0.7 && aspectRatio < 1.4 else {
+            print("  ❌ Wrong path count or aspect ratio for ball")
             return false
         }
         
         // Check if main path looks circular
         if let mainPath = paths.max(by: { $0.points.count < $1.points.count }) {
             let isCircular = isPathCircular(mainPath)
-            if isCircular {
-                print("  - Circular path detected: ✅")
-            }
+            print("  📊 Main path circular: \(isCircular), Points: \(mainPath.points.count)")
+            print("  🎯 Ball result: \(isCircular)")
             return isCircular
         }
         
         return false
     }
-    
-    private func detectBox(_ paths: [DrawingPath], aspectRatio: Double) -> Bool {
-        guard paths.count >= 3 && paths.count <= 8 else { return false }
+
+    // Enhanced circular detection
+    private func isPathCircular(_ path: DrawingPath) -> Bool {
+        guard path.points.count > 12 else { return false } // More points needed for circle
         
-        // Count straight lines
-        let straightLines = paths.filter { isPathStraight($0) }.count
+        // Calculate center
+        let centerX = path.points.map { $0.x }.reduce(0, +) / CGFloat(path.points.count)
+        let centerY = path.points.map { $0.y }.reduce(0, +) / CGFloat(path.points.count)
+        let center = CGPoint(x: centerX, y: centerY)
         
-        // Look for rectangular patterns
-        let hasRectangularAspect = aspectRatio > 1.2 || aspectRatio < 0.8
-        let result = straightLines >= 3 && hasRectangularAspect
-        
-        if result {
-            print("  - Straight lines: \(straightLines)")
-            print("  - Rectangular aspect: \(hasRectangularAspect)")
+        // Check if points are roughly equidistant from center
+        let distances = path.points.map { point in
+            sqrt(pow(point.x - center.x, 2) + pow(point.y - center.y, 2))
         }
         
-        return result
+        let avgDistance = distances.reduce(0, +) / CGFloat(distances.count)
+        let variance = distances.map { pow($0 - avgDistance, 2) }.reduce(0, +) / CGFloat(distances.count)
+        
+        // Tighter variance check for better circle detection
+        let isCircular = variance < pow(avgDistance * 0.25, 2) && avgDistance > 20
+        
+        print("    🔍 Circle analysis: avgDist=\(Int(avgDistance)), variance=\(Int(variance)), circular=\(isCircular)")
+        
+        return isCircular
     }
     
     private func detectAnimal(_ paths: [DrawingPath], bounds: CGRect, aspectRatio: Double) -> Bool {
@@ -187,24 +422,6 @@ class AIAnalysisService: ObservableObject {
         return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
     }
     
-    private func isPathCircular(_ path: DrawingPath) -> Bool {
-        guard path.points.count > 8 else { return false }
-        
-        // Calculate center
-        let centerX = path.points.map { $0.x }.reduce(0, +) / CGFloat(path.points.count)
-        let centerY = path.points.map { $0.y }.reduce(0, +) / CGFloat(path.points.count)
-        let center = CGPoint(x: centerX, y: centerY)
-        
-        // Check if points are roughly equidistant from center
-        let distances = path.points.map { point in
-            sqrt(pow(point.x - center.x, 2) + pow(point.y - center.y, 2))
-        }
-        
-        let avgDistance = distances.reduce(0, +) / CGFloat(distances.count)
-        let variance = distances.map { pow($0 - avgDistance, 2) }.reduce(0, +) / CGFloat(distances.count)
-        
-        return variance < pow(avgDistance * 0.4, 2) && avgDistance > 15
-    }
     
     private func isPathStraight(_ path: DrawingPath) -> Bool {
         guard path.points.count >= 2 else { return false }

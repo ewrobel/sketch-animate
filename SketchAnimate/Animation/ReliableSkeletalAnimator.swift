@@ -1,14 +1,7 @@
-//
-//  ReliableSkeletalAnimator.swift
-//  SketchAnimate
-//
-//  Created by Emily Wrobel on 6/27/25.
-//
-
 import Foundation
 import CoreGraphics
 
-// MARK: - Simplified Reliable Skeletal System
+// MARK: - Reliable Joint and Bone Structures
 
 struct ReliableJoint {
     let id: String
@@ -42,99 +35,232 @@ struct ReliableBone {
     }
 }
 
+// MARK: - Adaptive Skeletal Animator
+
 class ReliableSkeletalAnimator {
     
-    // MARK: - Create Skeleton with Guaranteed Connections
+    // MARK: - Create Adaptive Skeleton
     
     static func createReliableSkeleton(from paths: [DrawingPath]) -> (joints: [String: ReliableJoint], bones: [ReliableBone], headPath: (path: DrawingPath, index: Int)?)? {
         
-        print("🦴 Creating reliable skeleton from \(paths.count) paths")
+        print("🦴 Creating ADAPTIVE skeleton from \(paths.count) paths")
         
         guard !paths.isEmpty else { return nil }
         
-        // Find main body (longest vertical line)
-        guard let bodyInfo = findMainBody(paths) else {
-            print("❌ No main body found")
+        // First, identify what we actually have
+        let analysis = analyzePaths(paths)
+        
+        guard analysis.bodyIndex != nil else {
+            print("❌ No body found - falling back to path-based animation")
             return nil
         }
         
-        let bodyPath = bodyInfo.path
-        let bodyIndex = bodyInfo.index
+        print("✅ Analysis complete:")
+        print("  - Body: index \(analysis.bodyIndex!)")
+        print("  - Head: \(analysis.headIndex != nil ? "index \(analysis.headIndex!)" : "none")")
+        print("  - Neck: \(analysis.neckIndex != nil ? "index \(analysis.neckIndex!)" : "none")")
+        print("  - Arms: \(analysis.armIndices.count)")
+        print("  - Legs: \(analysis.legIndices.count)")
+        
+        // Create joints and bones based on what we actually found
+        var joints: [String: ReliableJoint] = [:]
+        var bones: [ReliableBone] = []
+        
+        let bodyPath = paths[analysis.bodyIndex!]
         let bodyBounds = bodyPath.boundingBox
         
-        print("✅ Found body: \(Int(bodyBounds.height))px tall at index \(bodyIndex)")
-        
-        // Find head (circular path)
-        let headPath = findHeadPath(paths)
-        if let head = headPath {
-            print("✅ Found head at index \(head.index)")
-        }
-        
-        // Create joints based on body
-        var joints: [String: ReliableJoint] = [:]
-        
-        let bodyTop = bodyBounds.minY
-        let bodyBottom = bodyBounds.maxY
-        let bodyCenter = bodyBounds.midX
-        let bodyHeight = bodyBounds.height
-        
-        // Main joints
-        let hipPosition = CGPoint(x: bodyCenter, y: bodyBottom - bodyHeight * 0.1)
-        let shoulderPosition = CGPoint(x: bodyCenter, y: bodyTop + bodyHeight * 0.15)
-        let neckPosition = CGPoint(x: bodyCenter, y: bodyTop)
+        // Create basic skeleton joints
+        let hipPosition = CGPoint(x: bodyBounds.midX, y: bodyBounds.maxY - 10)
+        let shoulderPosition = CGPoint(x: bodyBounds.midX, y: bodyBounds.minY + 10)
         
         joints["hip"] = ReliableJoint(id: "hip", position: hipPosition)
         joints["shoulder"] = ReliableJoint(id: "shoulder", position: shoulderPosition)
-        joints["neck"] = ReliableJoint(id: "neck", position: neckPosition)
-        
-        // Head position
-        let headPosition: CGPoint
-        if let head = headPath {
-            let headBounds = head.path.boundingBox
-            headPosition = CGPoint(x: headBounds.midX, y: headBounds.midY)
-        } else {
-            headPosition = CGPoint(x: bodyCenter, y: bodyTop - 20)
-        }
-        joints["head"] = ReliableJoint(id: "head", position: headPosition)
-        
-        // Create bones
-        var bones: [ReliableBone] = []
         
         // Main body bone
         bones.append(ReliableBone(
             id: "torso",
             start: "hip",
             end: "shoulder",
-            length: bodyHeight * 0.75,
-            pathIndex: bodyIndex
+            length: bodyBounds.height - 20,
+            pathIndex: analysis.bodyIndex!
         ))
         
-        // Find and classify limbs
-        let limbs = classifyLimbs(paths, excluding: [bodyIndex], relativeTo: bodyBounds)
-        
-        for limb in limbs {
-            // Add joint for limb end
-            joints[limb.endJointId] = ReliableJoint(id: limb.endJointId, position: limb.endPosition)
+        // Handle neck specially - preserve it as its own path!
+        if let neckIndex = analysis.neckIndex {
+            let neckPath = paths[neckIndex]
+            let neckBounds = neckPath.boundingBox
             
-            // Add joint for limb start if it doesn't exist
-            if joints[limb.startJointId] == nil {
-                joints[limb.startJointId] = ReliableJoint(id: limb.startJointId, position: limb.startPosition)
-            }
+            // Create neck joints based on actual path endpoints
+            let neckStart = neckPath.points.first ?? CGPoint(x: neckBounds.midX, y: neckBounds.maxY)
+            let neckEnd = neckPath.points.last ?? CGPoint(x: neckBounds.midX, y: neckBounds.minY)
             
-            // Add bone
+            joints["neck_start"] = ReliableJoint(id: "neck_start", position: neckStart)
+            joints["neck_end"] = ReliableJoint(id: "neck_end", position: neckEnd)
+            
             bones.append(ReliableBone(
-                id: limb.id,
-                start: limb.startJointId,
-                end: limb.endJointId,
-                length: limb.length,
-                pathIndex: limb.pathIndex
+                id: "neck",
+                start: "neck_start",
+                end: "neck_end",
+                length: neckBounds.height,
+                pathIndex: neckIndex  // IMPORTANT: Keep the original neck path
             ))
             
-            print("✅ Added \(limb.id): \(limb.startJointId) → \(limb.endJointId)")
+            print("✅ Added neck bone preserving original path at index \(neckIndex)")
         }
         
-        print("✅ Created skeleton: \(joints.count) joints, \(bones.count) bones")
+        // Add head positioning
+        if let headIndex = analysis.headIndex {
+            let headPath = paths[headIndex]
+            let headBounds = headPath.boundingBox
+            joints["head_center"] = ReliableJoint(id: "head_center", position: CGPoint(x: headBounds.midX, y: headBounds.midY))
+            print("✅ Added head center joint")
+        }
+        
+        // Add arms
+        for (i, armIndex) in analysis.armIndices.enumerated() {
+            let armPath = paths[armIndex]
+            let armId = "arm_\(i)"
+            let handId = "hand_\(i)"
+            
+            // Determine which end connects to body
+            let startPoint = armPath.points.first ?? CGPoint.zero
+            let endPoint = armPath.points.last ?? CGPoint.zero
+            
+            let startDistToBody = distanceToLine(point: startPoint, lineStart: shoulderPosition, lineEnd: hipPosition)
+            let endDistToBody = distanceToLine(point: endPoint, lineStart: shoulderPosition, lineEnd: hipPosition)
+            
+            let (armStart, armEnd) = startDistToBody < endDistToBody ? (startPoint, endPoint) : (endPoint, startPoint)
+            
+            joints[handId] = ReliableJoint(id: handId, position: armEnd)
+            
+            bones.append(ReliableBone(
+                id: armId,
+                start: "shoulder",
+                end: handId,
+                length: sqrt(pow(armEnd.x - armStart.x, 2) + pow(armEnd.y - armStart.y, 2)),
+                pathIndex: armIndex
+            ))
+            
+            print("✅ Added \(armId)")
+        }
+        
+        // Add legs
+        for (i, legIndex) in analysis.legIndices.enumerated() {
+            let legPath = paths[legIndex]
+            let legId = "leg_\(i)"
+            let footId = "foot_\(i)"
+            
+            let startPoint = legPath.points.first ?? CGPoint.zero
+            let endPoint = legPath.points.last ?? CGPoint.zero
+            
+            let startDistToBody = distanceToLine(point: startPoint, lineStart: shoulderPosition, lineEnd: hipPosition)
+            let endDistToBody = distanceToLine(point: endPoint, lineStart: shoulderPosition, lineEnd: hipPosition)
+            
+            let (legStart, legEnd) = startDistToBody < endDistToBody ? (startPoint, endPoint) : (endPoint, startPoint)
+            
+            joints[footId] = ReliableJoint(id: footId, position: legEnd)
+            
+            bones.append(ReliableBone(
+                id: legId,
+                start: "hip",
+                end: footId,
+                length: sqrt(pow(legEnd.x - legStart.x, 2) + pow(legEnd.y - legStart.y, 2)),
+                pathIndex: legIndex
+            ))
+            
+            print("✅ Added \(legId)")
+        }
+        
+        let headPath = analysis.headIndex != nil ? (paths[analysis.headIndex!], analysis.headIndex!) : nil
+        
+        print("✅ Created adaptive skeleton: \(joints.count) joints, \(bones.count) bones")
         return (joints, bones, headPath)
+    }
+    
+    // MARK: - Path Analysis
+    
+    struct PathAnalysis {
+        let bodyIndex: Int?
+        let headIndex: Int?
+        let neckIndex: Int?
+        let armIndices: [Int]
+        let legIndices: [Int]
+    }
+    
+    private static func analyzePaths(_ paths: [DrawingPath]) -> PathAnalysis {
+        var bodyIndex: Int?
+        var headIndex: Int?
+        var neckIndex: Int?
+        var armIndices: [Int] = []
+        var legIndices: [Int] = []
+        
+        // Find body first (longest vertical line)
+        var bestBodyScore: CGFloat = 0
+        for (index, path) in paths.enumerated() {
+            let bounds = path.boundingBox
+            let verticalness = bounds.height / max(bounds.width, 1)
+            let size = bounds.height
+            
+            if verticalness > 1.2 && size > 40 {
+                let score = verticalness * size
+                if score > bestBodyScore {
+                    bestBodyScore = score
+                    bodyIndex = index
+                }
+            }
+        }
+        
+        guard let bodyIdx = bodyIndex else {
+            return PathAnalysis(bodyIndex: nil, headIndex: nil, neckIndex: nil, armIndices: [], legIndices: [])
+        }
+        
+        let bodyBounds = paths[bodyIdx].boundingBox
+        
+        // Analyze remaining paths
+        for (index, path) in paths.enumerated() {
+            guard index != bodyIdx else { continue }
+            
+            let bounds = path.boundingBox
+            let center = CGPoint(x: bounds.midX, y: bounds.midY)
+            let aspectRatio = bounds.width / bounds.height
+            
+            // Check for head (circular, above body)
+            if aspectRatio > 0.6 && aspectRatio < 1.6 && path.points.count > 8 && center.y < bodyBounds.minY {
+                headIndex = index
+                print("  🎯 Found head at index \(index)")
+                continue
+            }
+            
+            // Check for neck (short vertical line near top of body)
+            let verticalness = bounds.height / max(bounds.width, 1)
+            if verticalness > 1.0 && bounds.height < bodyBounds.height * 0.3 &&
+               abs(center.x - bodyBounds.midX) < 30 && center.y < bodyBounds.midY {
+                neckIndex = index
+                print("  🎯 Found neck at index \(index)")
+                continue
+            }
+            
+            // Check position relative to body
+            let relativeY = center.y - bodyBounds.midY
+            
+            if relativeY < 0 {
+                // Upper area - likely arms
+                armIndices.append(index)
+                print("  🎯 Found arm at index \(index)")
+            } else {
+                // Lower area - likely legs
+                legIndices.append(index)
+                print("  🎯 Found leg at index \(index)")
+            }
+        }
+        
+        return PathAnalysis(
+            bodyIndex: bodyIdx,
+            headIndex: headIndex,
+            neckIndex: neckIndex,
+            armIndices: armIndices,
+            legIndices: legIndices
+        )
     }
     
     // MARK: - Generate Walking Animation
@@ -181,10 +307,6 @@ class ReliableSkeletalAnimator {
     }
     
     // MARK: - Animation Logic
-    
-    // MARK: - Animation Logic (CORRECTED VERSION)
-    // Replace the animateJointsForWalking function in your SkeletalAnimator.swift file
-
     private static func animateJointsForWalking(
         _ originalJoints: [String: ReliableJoint],
         walkPhase: Double,
@@ -196,10 +318,6 @@ class ReliableSkeletalAnimator {
         // Walking motion parameters
         let bodyBob = sin(walkPhase * 2 * .pi) * 6
         let bodySway = sin(walkPhase * 4 * .pi) * 2
-        let leftLegSwing = sin(walkPhase * 2 * .pi) * 25
-        let rightLegSwing = sin(walkPhase * 2 * .pi + .pi) * 25
-        let leftArmSwing = sin(walkPhase * 2 * .pi + .pi) * 15
-        let rightArmSwing = sin(walkPhase * 2 * .pi) * 15
         
         // 1. Move hip (root) - everything else follows from this
         if var hip = joints["hip"] {
@@ -215,70 +333,105 @@ class ReliableSkeletalAnimator {
            let hip = joints["hip"] {
             shoulder.moveTo(CGPoint(
                 x: hip.currentPosition.x + bodySway * 0.5,
-                y: hip.currentPosition.y - 60 + bodyBob * 0.8 // -60 is approximate torso length
+                y: hip.currentPosition.y - 60 + bodyBob * 0.8
             ))
             joints["shoulder"] = shoulder
         }
-        
-        // 3. Move neck and head following shoulder
-        if var neck = joints["neck"],
-           let shoulder = joints["shoulder"] {
-            neck.moveTo(CGPoint(
-                x: shoulder.currentPosition.x,
-                y: shoulder.currentPosition.y - 10
-            ))
-            joints["neck"] = neck
+
+        // 3. Move neck if it exists - KEEP IT CONNECTED TO SHOULDER
+            if var neckStart = joints["neck_start"],
+               let shoulder = joints["shoulder"] {
+                // Neck start should be near the shoulder
+                neckStart.moveTo(CGPoint(
+                    x: shoulder.currentPosition.x,
+                    y: shoulder.currentPosition.y - 5  // Just above shoulder
+                ))
+                joints["neck_start"] = neckStart
+                
+                // Neck end maintains the original length
+                if var neckEnd = joints["neck_end"] {
+                    let neckLength = sqrt(pow(neckEnd.originalPosition.x - neckStart.originalPosition.x, 2) +
+                                        pow(neckEnd.originalPosition.y - neckStart.originalPosition.y, 2))
+                    neckEnd.moveTo(CGPoint(
+                        x: neckStart.currentPosition.x,
+                        y: neckStart.currentPosition.y - neckLength  // Maintain original neck length
+                    ))
+                    joints["neck_end"] = neckEnd
+                    
+                    print("🦴 Neck: start(\(Int(neckStart.currentPosition.x)), \(Int(neckStart.currentPosition.y))) → end(\(Int(neckEnd.currentPosition.x)), \(Int(neckEnd.currentPosition.y)))")
+                }
+            }
+            
+        // 4. Move head following neck or shoulder - IMPROVED
+        if var headCenter = joints["head_center"] {
+            // First try to follow neck end, then neck start, then shoulder
+            let referenceJoint = joints["neck_end"] ?? joints["neck_start"] ?? joints["shoulder"]
+            
+            if let reference = referenceJoint {
+                // Head follows the reference point with slight movement
+                let headNod = sin(walkPhase * 2 * .pi) * 2
+                let headSway = sin(walkPhase * 2 * .pi) * 1
+                
+                headCenter.moveTo(CGPoint(
+                    x: reference.currentPosition.x + headSway,
+                    y: reference.currentPosition.y - 20 + headNod  // 20 pixels above reference
+                ))
+                joints["head_center"] = headCenter
+                
+                print("🎭 Head following \(reference.id): head at (\(Int(headCenter.currentPosition.x)), \(Int(headCenter.currentPosition.y))), ref at (\(Int(reference.currentPosition.x)), \(Int(reference.currentPosition.y)))")
+            } else {
+                print("⚠️ No reference joint found for head movement")
+            }
+        } else {
+            print("⚠️ head_center joint not found")
         }
-        
-        if var head = joints["head"],
-           let neck = joints["neck"] {
-            head.moveTo(CGPoint(
-                x: neck.currentPosition.x + sin(walkPhase * 2 * .pi) * 1, // Slight head nod
-                y: neck.currentPosition.y - 15 + sin(walkPhase * 2 * .pi) * 2
-            ))
-            joints["head"] = head
+
+            
+            // 5. Move arms with swinging motion
+            let leftArmSwing = sin(walkPhase * 2 * .pi + .pi) * 15
+            let rightArmSwing = sin(walkPhase * 2 * .pi) * 15
+            
+            // Animate all hand joints
+            for (jointId, joint) in joints {
+                if jointId.hasPrefix("hand_") {
+                    var animatedJoint = joint
+                    let armSwing = jointId.contains("0") ? leftArmSwing : rightArmSwing
+                    let isLeft = jointId.contains("0")
+                    
+                    if let shoulder = joints["shoulder"] {
+                        animatedJoint.moveTo(CGPoint(
+                            x: shoulder.currentPosition.x + (isLeft ? -30 : 30) + armSwing,
+                            y: shoulder.currentPosition.y + 20 + armSwing * 0.2
+                        ))
+                        joints[jointId] = animatedJoint
+                    }
+                }
+            }
+            
+            // 6. Move legs with walking motion
+            let leftLegSwing = sin(walkPhase * 2 * .pi) * 25
+            let rightLegSwing = sin(walkPhase * 2 * .pi + .pi) * 25
+            
+            // Animate all foot joints
+            for (jointId, joint) in joints {
+                if jointId.hasPrefix("foot_") {
+                    var animatedJoint = joint
+                    let legSwing = jointId.contains("0") ? leftLegSwing : rightLegSwing
+                    let isLeft = jointId.contains("0")
+                    
+                    if let hip = joints["hip"] {
+                        animatedJoint.moveTo(CGPoint(
+                            x: hip.currentPosition.x + (isLeft ? -10 : 10) + legSwing,
+                            y: hip.currentPosition.y + 50 + (legSwing > 0 ? -abs(legSwing) * 0.2 : 0)
+                        ))
+                        joints[jointId] = animatedJoint
+                    }
+                }
+            }
+            
+            return joints
         }
-        
-        // 4. Move arms - NOW USING shoulder position
-        if var leftHand = joints["hand_left"],
-           let shoulder = joints["shoulder"] {
-            leftHand.moveTo(CGPoint(
-                x: shoulder.currentPosition.x - 30 + leftArmSwing,  // Connected to shoulder
-                y: shoulder.currentPosition.y + 20 + leftArmSwing * 0.2
-            ))
-            joints["hand_left"] = leftHand
-        }
-        
-        if var rightHand = joints["hand_right"],
-           let shoulder = joints["shoulder"] {
-            rightHand.moveTo(CGPoint(
-                x: shoulder.currentPosition.x + 30 + rightArmSwing,  // Connected to shoulder
-                y: shoulder.currentPosition.y + 20 + rightArmSwing * 0.2
-            ))
-            joints["hand_right"] = rightHand
-        }
-        
-        // 5. Move legs - NOW USING hip position to maintain connection
-        if var leftFoot = joints["foot_left"],
-           let hip = joints["hip"] {
-            leftFoot.moveTo(CGPoint(
-                x: hip.currentPosition.x - 10 + leftLegSwing,  // Connected to hip
-                y: hip.currentPosition.y + 50 + (leftLegSwing > 0 ? -abs(leftLegSwing) * 0.2 : 0)
-            ))
-            joints["foot_left"] = leftFoot
-        }
-        
-        if var rightFoot = joints["foot_right"],
-           let hip = joints["hip"] {
-            rightFoot.moveTo(CGPoint(
-                x: hip.currentPosition.x + 10 + rightLegSwing,  // Connected to hip
-                y: hip.currentPosition.y + 50 + (rightLegSwing > 0 ? -abs(rightLegSwing) * 0.2 : 0)
-            ))
-            joints["foot_right"] = rightFoot
-        }
-        
-        return joints
-    }
+    
     // MARK: - Convert to Paths
     
     private static func convertToPaths(
@@ -292,9 +445,14 @@ class ReliableSkeletalAnimator {
         
         // Update each bone path
         for bone in bones {
-            guard bone.pathIndex < animatedPaths.count,
-                  let startJoint = joints[bone.startJointId],
+            guard bone.pathIndex < animatedPaths.count else {
+                print("⚠️ Bone \(bone.id) has invalid path index \(bone.pathIndex)")
+                continue
+            }
+            
+            guard let startJoint = joints[bone.startJointId],
                   let endJoint = joints[bone.endJointId] else {
+                print("⚠️ Missing joints for bone \(bone.id): \(bone.startJointId) or \(bone.endJointId)")
                 continue
             }
             
@@ -302,15 +460,18 @@ class ReliableSkeletalAnimator {
             newPath.points = [startJoint.currentPosition, endJoint.currentPosition]
             newPath.rebuildPath()
             animatedPaths[bone.pathIndex] = newPath
+            
+            print("🦴 Updated \(bone.id): (\(Int(startJoint.currentPosition.x)), \(Int(startJoint.currentPosition.y))) → (\(Int(endJoint.currentPosition.x)), \(Int(endJoint.currentPosition.y)))")
         }
         
-        // Update head path specially
+        // Update head path specially - IMPROVED HEAD MOVEMENT
         if let headInfo = headPath,
-           let headJoint = joints["head"] {
+           let headJoint = joints["head_center"] {
             
             let originalHeadBounds = headInfo.path.boundingBox
             let originalCenter = CGPoint(x: originalHeadBounds.midX, y: originalHeadBounds.midY)
             
+            // Calculate how much the head should move
             let deltaX = headJoint.currentPosition.x - originalCenter.x
             let deltaY = headJoint.currentPosition.y - originalCenter.y
             
@@ -320,6 +481,17 @@ class ReliableSkeletalAnimator {
             }
             newHeadPath.rebuildPath()
             animatedPaths[headInfo.index] = newHeadPath
+            
+            print("🎭 Head moved by (\(Int(deltaX)), \(Int(deltaY))) to center (\(Int(headJoint.currentPosition.x)), \(Int(headJoint.currentPosition.y)))")
+        } else {
+            print("⚠️ Head path or head joint not found")
+            if headPath == nil {
+                print("   - headPath is nil")
+            }
+            if joints["head_center"] == nil {
+                print("   - head_center joint not found")
+                print("   - Available joints: \(joints.keys.sorted().joined(separator: ", "))")
+            }
         }
         
         return animatedPaths
@@ -327,117 +499,24 @@ class ReliableSkeletalAnimator {
     
     // MARK: - Helper Methods
     
-    private static func findMainBody(_ paths: [DrawingPath]) -> (path: DrawingPath, index: Int)? {
-        var bestIndex = 0
-        var bestScore: CGFloat = 0
+    private static func distanceToLine(point: CGPoint, lineStart: CGPoint, lineEnd: CGPoint) -> CGFloat {
+        let dx = lineEnd.x - lineStart.x
+        let dy = lineEnd.y - lineStart.y
+        let length = sqrt(dx * dx + dy * dy)
         
-        for (index, path) in paths.enumerated() {
-            let bounds = path.boundingBox
-            let verticalness = bounds.height / max(bounds.width, 1)
-            
-            if verticalness > 1.2 && bounds.height > 40 {
-                let score = verticalness * bounds.height
-                if score > bestScore {
-                    bestScore = score
-                    bestIndex = index
-                }
-            }
+        guard length > 0 else {
+            return sqrt(pow(point.x - lineStart.x, 2) + pow(point.y - lineStart.y, 2))
         }
         
-        return bestScore > 0 ? (paths[bestIndex], bestIndex) : nil
-    }
-    
-    private static func findHeadPath(_ paths: [DrawingPath]) -> (path: DrawingPath, index: Int)? {
-        for (index, path) in paths.enumerated() {
-            let bounds = path.boundingBox
-            let aspectRatio = bounds.width / bounds.height
-            
-            if aspectRatio > 0.6 && aspectRatio < 1.6 && path.points.count > 8 {
-                return (path, index)
-            }
-        }
-        return nil
-    }
-    
-    struct LimbInfo {
-        let id: String
-        let startJointId: String
-        let endJointId: String
-        let startPosition: CGPoint
-        let endPosition: CGPoint
-        let length: CGFloat
-        let pathIndex: Int
-    }
-    
-    private static func classifyLimbs(_ paths: [DrawingPath], excluding excludedIndices: [Int], relativeTo bodyBounds: CGRect) -> [LimbInfo] {
-        var limbs: [LimbInfo] = []
+        let t = max(0, min(1, ((point.x - lineStart.x) * dx + (point.y - lineStart.y) * dy) / (length * length)))
+        let projection = CGPoint(x: lineStart.x + t * dx, y: lineStart.y + t * dy)
         
-        for (index, path) in paths.enumerated() {
-            guard !excludedIndices.contains(index) else { continue }
-            
-            let bounds = path.boundingBox
-            let center = CGPoint(x: bounds.midX, y: bounds.midY)
-            let length = sqrt(pow(bounds.width, 2) + pow(bounds.height, 2))
-            
-            let relativeX = center.x - bodyBounds.midX
-            let relativeY = center.y - bodyBounds.midY
-            
-            // Classify limb based on position
-            if relativeY < -bodyBounds.height * 0.1 {
-                // Upper area - arms
-                if relativeX < 0 {
-                    limbs.append(LimbInfo(
-                        id: "left_arm",
-                        startJointId: "shoulder",
-                        endJointId: "hand_left",
-                        startPosition: CGPoint(x: bodyBounds.midX - 10, y: bodyBounds.minY + bodyBounds.height * 0.15),
-                        endPosition: CGPoint(x: bounds.minX, y: bounds.midY),
-                        length: length,
-                        pathIndex: index
-                    ))
-                } else {
-                    limbs.append(LimbInfo(
-                        id: "right_arm",
-                        startJointId: "shoulder",
-                        endJointId: "hand_right",
-                        startPosition: CGPoint(x: bodyBounds.midX + 10, y: bodyBounds.minY + bodyBounds.height * 0.15),
-                        endPosition: CGPoint(x: bounds.maxX, y: bounds.midY),
-                        length: length,
-                        pathIndex: index
-                    ))
-                }
-            } else if relativeY > bodyBounds.height * 0.1 {
-                // Lower area - legs
-                if relativeX < 0 {
-                    limbs.append(LimbInfo(
-                        id: "left_leg",
-                        startJointId: "hip",
-                        endJointId: "foot_left",
-                        startPosition: CGPoint(x: bodyBounds.midX - 5, y: bodyBounds.maxY - bodyBounds.height * 0.1),
-                        endPosition: CGPoint(x: bounds.midX, y: bounds.maxY),
-                        length: length,
-                        pathIndex: index
-                    ))
-                } else {
-                    limbs.append(LimbInfo(
-                        id: "right_leg",
-                        startJointId: "hip",
-                        endJointId: "foot_right",
-                        startPosition: CGPoint(x: bodyBounds.midX + 5, y: bodyBounds.maxY - bodyBounds.height * 0.1),
-                        endPosition: CGPoint(x: bounds.midX, y: bounds.maxY),
-                        length: length,
-                        pathIndex: index
-                    ))
-                }
-            }
-        }
-        
-        return limbs
+        return sqrt(pow(point.x - projection.x, 2) + pow(point.y - projection.y, 2))
     }
     
     private static func debugFrame(joints: [String: ReliableJoint], frameNumber: Int) {
         print("🦴 Frame \(frameNumber):")
-        for (id, joint) in joints {
+        for (id, joint) in joints.sorted(by: { $0.key < $1.key }) {
             print("  \(id): (\(Int(joint.currentPosition.x)), \(Int(joint.currentPosition.y)))")
         }
     }

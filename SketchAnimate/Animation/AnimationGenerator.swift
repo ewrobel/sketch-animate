@@ -133,23 +133,45 @@ class AnimationGenerator {
     }
     
     // MARK: - Bounce Animation
-    
+
     private static func generateBounceAnimation(paths: [DrawingPath], totalFrames: Int) -> [AnimationFrame] {
         var frames: [AnimationFrame] = []
         let bounds = calculateBounds(paths)
         let center = CGPoint(x: bounds.midX, y: bounds.midY)
         
+        // Define the ground level (near bottom of drawing area)
+        let groundLevel = bounds.maxY + 50 // Just below the drawing
+        let originalBottomY = bounds.maxY  // Bottom of the original drawing
+        
+        // Maximum bounce height (should not go above original position)
+        let maxBounceHeight = min(bounds.height * 3.5, 200) // Limit bounce height
+        
+        print("🏀 Bounce setup: ground=\(Int(groundLevel)), original=\(Int(originalBottomY)), maxHeight=\(Int(maxBounceHeight))")
+        
         for frameIndex in 0..<totalFrames {
             let progress = Double(frameIndex) / Double(totalFrames)
             let bouncePhase = (progress * 3).truncatingRemainder(dividingBy: 1.0) // 3 bounces
             
-            // Bouncing motion
-            let bounceHeight = abs(sin(bouncePhase * .pi)) * 150
-            let verticalOffset = -bounceHeight
+            // Physics-based bounce motion
+            let bounceProgress = bouncePhase
+            var bounceHeight: CGFloat
             
-            // Squash and stretch
-            let squashFactor = 1.0 - (bounceHeight / 200) * 0.4
-            let stretchFactor = 1.0 + (bounceHeight / 150) * 0.3
+            if bounceProgress <= 0.5 {
+                // Going up (first half of bounce)
+                let upProgress = bounceProgress * 2 // 0 to 1
+                bounceHeight = sin(upProgress * .pi) * maxBounceHeight
+            } else {
+                // Coming down (second half of bounce)
+                let downProgress = (bounceProgress - 0.5) * 2 // 0 to 1
+                bounceHeight = sin((1 - downProgress) * .pi) * maxBounceHeight
+            }
+            
+            // Calculate vertical offset from original position
+            let verticalOffset = -(bounceHeight) // Negative because we want to go up
+            
+            // Squash and stretch effect
+            let heightFactor = 1.0 - (bounceHeight / maxBounceHeight) * 0.3 // Squash when on ground
+            let widthFactor = 1.0 + (bounceHeight / maxBounceHeight) * 0.2   // Stretch when bouncing
             
             var animatedPaths: [DrawingPath] = []
             
@@ -159,12 +181,18 @@ class AnimationGenerator {
                 for point in originalPath.points {
                     var newPoint = point
                     
+                    // Apply vertical movement (bounce)
+                    newPoint.y = point.y + verticalOffset
+                    
                     // Apply squash and stretch relative to center
                     let relativeX = point.x - center.x
                     let relativeY = point.y - center.y
                     
-                    newPoint.x = center.x + relativeX * stretchFactor
-                    newPoint.y = center.y + relativeY * squashFactor + verticalOffset
+                    newPoint.x = center.x + relativeX * widthFactor
+                    newPoint.y = (center.y + verticalOffset) + relativeY * heightFactor
+                    
+                    // Ensure we don't go below ground level
+                    newPoint.y = min(newPoint.y, groundLevel - 10)
                     
                     newPath.points.append(newPoint)
                 }
@@ -174,6 +202,12 @@ class AnimationGenerator {
             }
             
             frames.append(AnimationFrame(paths: animatedPaths, frameNumber: frameIndex))
+            
+            // Debug first few frames
+            if frameIndex < 5 {
+                let bottomY = animatedPaths.first?.points.map { $0.y }.max() ?? 0
+                print("Frame \(frameIndex): bounceHeight=\(Int(bounceHeight)), bottomY=\(Int(bottomY))")
+            }
         }
         
         return frames
@@ -262,10 +296,75 @@ class AnimationGenerator {
     }
     
     private static func generateWaveAnimation(paths: [DrawingPath], totalFrames: Int) -> [AnimationFrame] {
-        return generateSimpleAnimation(paths: paths, totalFrames: totalFrames) { progress, point, center in
-            let waveAmount = sin(progress * 4 * .pi) * 20
-            return CGPoint(x: point.x + waveAmount, y: point.y)
+        var frames: [AnimationFrame] = []
+        let bounds = calculateBounds(paths)
+        
+        // Identify which path is likely the arm to wave
+        let armPathIndex = findWavingArm(paths, bounds: bounds)
+        
+        for frameIndex in 0..<totalFrames {
+            let progress = Double(frameIndex) / Double(totalFrames)
+            let waveMotion = sin(progress * 8 * .pi) * 25 // Faster waving
+            let waveUpDown = sin(progress * 8 * .pi) * 15
+            
+            var animatedPaths: [DrawingPath] = []
+            
+            for (index, originalPath) in paths.enumerated() {
+                var newPath = DrawingPath()
+                
+                if index == armPathIndex {
+                    // This is the waving arm - animate it
+                    for point in originalPath.points {
+                        let newPoint = CGPoint(
+                            x: point.x + waveMotion,
+                            y: point.y + waveUpDown
+                        )
+                        newPath.points.append(newPoint)
+                    }
+                } else {
+                    // All other body parts stay still
+                    newPath.points = originalPath.points
+                }
+                
+                newPath.rebuildPath()
+                animatedPaths.append(newPath)
+            }
+            
+            frames.append(AnimationFrame(paths: animatedPaths, frameNumber: frameIndex))
         }
+        
+        return frames
+    }
+
+    // Helper function to identify which path should wave
+    private static func findWavingArm(_ paths: [DrawingPath], bounds: CGRect) -> Int {
+        var bestArmIndex = 0
+        var bestArmScore: CGFloat = 0
+        
+        for (index, path) in paths.enumerated() {
+            let pathBounds = path.boundingBox
+            let pathCenter = CGPoint(x: pathBounds.midX, y: pathBounds.midY)
+            
+            // Look for horizontal-ish lines in the upper area
+            let isHorizontal = pathBounds.width > pathBounds.height
+            let isInUpperArea = pathCenter.y < bounds.midY
+            let isOnRightSide = pathCenter.x > bounds.midX // Right arm waves
+            let hasGoodLength = pathBounds.width > 30
+            
+            var score: CGFloat = 0
+            if isHorizontal { score += 3 }
+            if isInUpperArea { score += 2 }
+            if isOnRightSide { score += 1 }
+            if hasGoodLength { score += 1 }
+            
+            if score > bestArmScore {
+                bestArmScore = score
+                bestArmIndex = index
+            }
+        }
+        
+        print("🤚 Wave animation will move path \(bestArmIndex) (score: \(bestArmScore))")
+        return bestArmIndex
     }
     
     private static func generateRollAnimation(paths: [DrawingPath], totalFrames: Int) -> [AnimationFrame] {
