@@ -20,7 +20,15 @@ class AnimationGenerator {
         
         switch animationType {
         case .walk:
-            frames = generateWalkAnimation(paths: paths, totalFrames: totalFrames)
+            if let skeleton = ConnectedSkeletalAnimator.createConnectedSkeleton(from: paths) {
+                frames = ConnectedSkeletalAnimator.generateConnectedWalkingAnimation(
+                    skeleton: skeleton,
+                    originalPaths: paths,
+                    totalFrames: totalFrames
+                )
+            } else {
+                frames = generateWalkAnimation(paths: paths, totalFrames: totalFrames)
+            }
         case .jump:
             frames = generateJumpAnimation(paths: paths, totalFrames: totalFrames)
         case .wave:

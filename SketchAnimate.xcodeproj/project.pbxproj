@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		140269C02E0B9329000DD7B4 /* JointBasedAnimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 140269BF2E0B9329000DD7B4 /* JointBasedAnimator.swift */; };
+		140269C22E0F8922000DD7B4 /* SkeletalAnimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 140269C12E0F8922000DD7B4 /* SkeletalAnimator.swift */; };
 		148D21542E0991C8001B7561 /* SketchAnimateApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D21532E0991C8001B7561 /* SketchAnimateApp.swift */; };
 		148D21562E0991C8001B7561 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D21552E0991C8001B7561 /* ContentView.swift */; };
 		148D21582E0991CC001B7561 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 148D21572E0991CC001B7561 /* Assets.xcassets */; };
@@ -47,7 +47,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		140269BF2E0B9329000DD7B4 /* JointBasedAnimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JointBasedAnimator.swift; sourceTree = "<group>"; };
+		140269C12E0F8922000DD7B4 /* SkeletalAnimator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SkeletalAnimator.swift; sourceTree = "<group>"; };
 		148D21502E0991C8001B7561 /* SketchAnimate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SketchAnimate.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		148D21532E0991C8001B7561 /* SketchAnimateApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SketchAnimateApp.swift; sourceTree = "<group>"; };
 		148D21552E0991C8001B7561 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -198,10 +198,10 @@
 		148D21932E0A44A8001B7561 /* Animation */ = {
 			isa = PBXGroup;
 			children = (
+				140269C12E0F8922000DD7B4 /* SkeletalAnimator.swift */,
 				148D21942E0A44BC001B7561 /* AnimationGenerator.swift */,
 				148D219E2E0B1208001B7561 /* PreservingAnimator.swift */,
 				148D21A02E0B1279001B7561 /* AnimationDebugger.swift */,
-				140269BF2E0B9329000DD7B4 /* JointBasedAnimator.swift */,
 			);
 			path = Animation;
 			sourceTree = "<group>";
@@ -337,7 +337,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				148D21952E0A44BC001B7561 /* AnimationGenerator.swift in Sources */,
-				140269C02E0B9329000DD7B4 /* JointBasedAnimator.swift in Sources */,
+				140269C22E0F8922000DD7B4 /* SkeletalAnimator.swift in Sources */,
 				148D218B2E0995B6001B7561 /* ObjectDetector.swift in Sources */,
 				148D21902E099B67001B7561 /* AIAnalysisService.swift in Sources */,
 				148D21862E09930D001B7561 /* AnimationFrame.swift in Sources */,
