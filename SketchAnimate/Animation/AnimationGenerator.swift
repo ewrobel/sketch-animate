@@ -20,13 +20,17 @@ class AnimationGenerator {
         
         switch animationType {
         case .walk:
-            if let skeleton = ConnectedSkeletalAnimator.createConnectedSkeleton(from: paths) {
-                frames = ConnectedSkeletalAnimator.generateConnectedWalkingAnimation(
-                    skeleton: skeleton,
+            // Try reliable skeletal animation
+            if let skeletonData = ReliableSkeletalAnimator.createReliableSkeleton(from: paths) {
+                frames = ReliableSkeletalAnimator.generateWalkingAnimation(
+                    joints: skeletonData.joints,
+                    bones: skeletonData.bones,
+                    headPath: skeletonData.headPath,
                     originalPaths: paths,
                     totalFrames: totalFrames
                 )
             } else {
+                // Fallback to path-based
                 frames = generateWalkAnimation(paths: paths, totalFrames: totalFrames)
             }
         case .jump:
