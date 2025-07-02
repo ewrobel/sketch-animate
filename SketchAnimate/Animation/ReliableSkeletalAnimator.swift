@@ -177,6 +177,105 @@ class ReliableSkeletalAnimator {
         return (joints, bones, headPath)
     }
     
+    
+    // Add this as a static function in ReliableSkeletalAnimator class:
+    static func debugAnalyzePaths(_ paths: [DrawingPath]) -> String {
+        var result = "🔍 BODY PART ANALYSIS\n"
+        result += "═══════════════════════\n\n"
+        
+        guard !paths.isEmpty else {
+            return result + "❌ No paths to analyze"
+        }
+        
+        result += "📊 Overview:\n"
+        result += "- Total paths: \(paths.count)\n\n"
+        
+        // Analyze each path individually
+        for (index, path) in paths.enumerated() {
+            let bounds = path.boundingBox
+            let center = CGPoint(x: bounds.midX, y: bounds.midY)
+            let aspectRatio = bounds.width / bounds.height
+            let verticalness = bounds.height / max(bounds.width, 1)
+            
+            result += "📍 PATH \(index):\n"
+            result += "  Size: \(Int(bounds.width)) x \(Int(bounds.height))\n"
+            result += "  Center: (\(Int(center.x)), \(Int(center.y)))\n"
+            result += "  Aspect: \(String(format: "%.2f", aspectRatio))\n"
+            result += "  Vertical: \(String(format: "%.2f", verticalness))\n"
+            result += "  Points: \(path.points.count)\n"
+            
+            // Classify this path
+            if aspectRatio > 0.6 && aspectRatio < 1.6 && path.points.count > 8 {
+                result += "  🎯 LIKELY: HEAD (circular)\n"
+            } else if verticalness > 1.2 && bounds.height > 40 {
+                result += "  🎯 LIKELY: BODY (tall vertical)\n"
+            } else if verticalness > 1.0 && bounds.height < 30 {
+                result += "  🎯 LIKELY: NECK (short vertical)\n"
+            } else {
+                result += "  🎯 LIKELY: LIMB (arm or leg)\n"
+            }
+            result += "\n"
+        }
+        
+        // Run the actual analysis
+        let analysis = analyzePaths(paths)
+        
+        result += "🎯 FINAL CLASSIFICATION:\n"
+        result += "═══════════════════════\n"
+        
+        if let bodyIndex = analysis.bodyIndex {
+            result += "✅ BODY: Path \(bodyIndex)\n"
+        } else {
+            result += "❌ BODY: Not found\n"
+        }
+        
+        if let headIndex = analysis.headIndex {
+            result += "✅ HEAD: Path \(headIndex)\n"
+        } else {
+            result += "❌ HEAD: Not found\n"
+        }
+        
+        if let neckIndex = analysis.neckIndex {
+            result += "✅ NECK: Path \(neckIndex)\n"
+        } else {
+            result += "❌ NECK: Not found\n"
+        }
+        
+        result += "✅ ARMS: \(analysis.armIndices.count) found"
+        if !analysis.armIndices.isEmpty {
+            result += " (paths: \(analysis.armIndices.map(String.init).joined(separator: ", ")))"
+        }
+        result += "\n"
+        
+        result += "✅ LEGS: \(analysis.legIndices.count) found"
+        if !analysis.legIndices.isEmpty {
+            result += " (paths: \(analysis.legIndices.map(String.init).joined(separator: ", ")))"
+        }
+        result += "\n\n"
+        
+        // Show what skeleton would be created
+        if let skeletonData = createReliableSkeleton(from: paths) {
+            result += "🦴 SKELETON CREATED:\n"
+            result += "- Joints: \(skeletonData.joints.count)\n"
+            result += "- Bones: \(skeletonData.bones.count)\n"
+            result += "- Head path: \(skeletonData.headPath != nil ? "Yes" : "No")\n\n"
+            
+            result += "Joint positions:\n"
+            for (id, joint) in skeletonData.joints.sorted(by: { $0.key < $1.key }) {
+                result += "  \(id): (\(Int(joint.originalPosition.x)), \(Int(joint.originalPosition.y)))\n"
+            }
+            
+            result += "\nBones:\n"
+            for bone in skeletonData.bones {
+                result += "  \(bone.id): \(bone.startJointId) → \(bone.endJointId) (path \(bone.pathIndex))\n"
+            }
+        } else {
+            result += "❌ SKELETON: Could not create\n"
+        }
+        
+        return result
+    }
+    
     // MARK: - Path Analysis
     
     struct PathAnalysis {

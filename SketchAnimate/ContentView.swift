@@ -6,7 +6,12 @@ struct ContentView: View {
     @State private var showingTests = false
     @State private var isProcessing = false
     @State private var detectedObject: ObjectType?
-    
+    @State private var showBodyPartAnalysis = false
+    @State private var bodyPartAnalysis: String = ""
+    @State private var isAnimating = false
+    @State private var animationFrames: [AnimationFrame] = []
+    @StateObject private var aiService = AIAnalysisService()
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -39,43 +44,43 @@ struct ContentView: View {
                 DebugView(paths: paths)
                     .transition(.move(edge: .top))
             } else {
-            // Main content
-            ZStack {
-                if isAnimating {
-                    // Show animation
-                    AnimationView(animationFrames: animationFrames) {
-                        // Animation completed
-                        isAnimating = false
-                        clearDrawing()
-                    }
-                    .padding()
-                } else {
-                    // Drawing Canvas
-                    DrawingCanvas(paths: $paths, currentPath: $currentPath)
-                        .frame(maxHeight: .infinity)
-                        .padding()
-                    
-                    // Processing overlay
-                    if isProcessing {
-                        ZStack {
-                            Color.black.opacity(0.3)
-                            
-                            VStack(spacing: 20) {
-                                ProgressView()
-                                    .scaleEffect(2)
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                
-                                Text("Analyzing your drawing...")
-                                    .font(.title2)
-                                    .foregroundColor(.white)
-                                    .fontWeight(.medium)
-                            }
+                // Main content
+                ZStack {
+                    if isAnimating {
+                        // Show animation
+                        AnimationView(animationFrames: animationFrames) {
+                            // Animation completed
+                            isAnimating = false
+                            clearDrawing()
                         }
-                        .cornerRadius(12)
                         .padding()
+                    } else {
+                        // Drawing Canvas
+                        DrawingCanvas(paths: $paths, currentPath: $currentPath)
+                            .frame(maxHeight: .infinity)
+                            .padding()
+                        
+                        // Processing overlay
+                        if isProcessing {
+                            ZStack {
+                                Color.black.opacity(0.3)
+                                
+                                VStack(spacing: 20) {
+                                    ProgressView()
+                                        .scaleEffect(2)
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    
+                                    Text("Analyzing your drawing...")
+                                        .font(.title2)
+                                        .foregroundColor(.white)
+                                        .fontWeight(.medium)
+                                }
+                            }
+                            .cornerRadius(12)
+                            .padding()
+                        }
                     }
                 }
-            }
                 
                 // Bottom section
                 if isAnimating {
@@ -106,7 +111,7 @@ struct ContentView: View {
                         }
                     )
                 } else {
-                    // Show analyze button
+                    // Show analyze buttons
                     VStack(spacing: 20) {
                         if !paths.isEmpty {
                             Text("Drawing has \(paths.count) stroke\(paths.count == 1 ? "" : "s")")
@@ -118,35 +123,96 @@ struct ContentView: View {
                                 .foregroundColor(.gray)
                         }
                         
-                        Button(action: analyzeDrawing) {
-                            Text("Analyze Drawing")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(paths.isEmpty ? Color.gray : Color.blue)
-                                .cornerRadius(12)
+                        // Two buttons side by side
+                        HStack(spacing: 15) {
+                            Button(action: analyzeDrawing) {
+                                Text("Analyze Drawing")
+                                    .font(.headline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 16)
+                                    .background(paths.isEmpty ? Color.gray : Color.blue)
+                                    .cornerRadius(12)
+                            }
+                            .disabled(paths.isEmpty || isProcessing)
+                            
+                            Button("Show Body Parts") {
+                                if !paths.isEmpty {
+                                    analyzeAndShowBodyParts()
+                                    showBodyPartAnalysis.toggle()
+                                }
+                            }
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(paths.isEmpty ? Color.gray : Color.purple)
+                            .cornerRadius(12)
+                            .disabled(paths.isEmpty)
                         }
-                        .disabled(paths.isEmpty || isProcessing)
                     }
                     .padding()
                 }
             }
         }
         .background(Color(.systemGroupedBackground))
+        .overlay(
+            // Body part analysis overlay
+            Group {
+                if showBodyPartAnalysis {
+                    VStack {
+                        ScrollView {
+                            Text("Body Part Analysis")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .padding()
+                            
+                            Text(bodyPartAnalysis)
+                                .font(.system(.caption, design: .monospaced))
+                                .padding()
+                                .background(Color.black.opacity(0.8))
+                                .foregroundColor(.white)
+                                .cornerRadius(8)
+                        }
+                        .frame(maxHeight: 300)
+                        
+                        Button("Close") {
+                            showBodyPartAnalysis = false
+                        }
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                    }
+                    .padding()
+                    .background(Color.white)
+                    .cornerRadius(12)
+                    .shadow(radius: 5)
+                    .transition(.scale)
+                }
+            }
+        )
         .animation(.easeInOut(duration: 0.3), value: showingTests)
         .animation(.easeInOut(duration: 0.3), value: detectedObject)
+        .animation(.easeInOut(duration: 0.3), value: showBodyPartAnalysis)
     }
+    
+    // MARK: - Helper Functions
     
     private func clearDrawing() {
         paths.removeAll()
         currentPath = DrawingPath()
         detectedObject = nil
         isProcessing = false
+        showBodyPartAnalysis = false
     }
     
-    @StateObject private var aiService = AIAnalysisService()
+    private func analyzeAndShowBodyParts() {
+        let analysis = ReliableSkeletalAnimator.debugAnalyzePaths(paths)
+        bodyPartAnalysis = analysis
+    }
     
     private func analyzeDrawing() {
         isProcessing = true
@@ -172,9 +238,6 @@ struct ContentView: View {
         }
     }
     
-    @State private var isAnimating = false
-    @State private var animationFrames: [AnimationFrame] = []
-    
     private func startAnimation(_ animationType: AnimationType) {
         print("🎬 Starting \(animationType.displayName) animation for \(detectedObject?.displayName ?? "unknown")")
         
@@ -189,6 +252,8 @@ struct ContentView: View {
         isAnimating = true
     }
 }
+
+// MARK: - Debug View
 
 struct DebugView: View {
     let paths: [DrawingPath]
@@ -269,6 +334,8 @@ struct DebugView: View {
         }
     }
 }
+
+// MARK: - Preview
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
