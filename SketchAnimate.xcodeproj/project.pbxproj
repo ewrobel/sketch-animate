@@ -26,7 +26,6 @@
 		148D21952E0A44BC001B7561 /* AnimationGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D21942E0A44BC001B7561 /* AnimationGenerator.swift */; };
 		148D21972E0A44E0001B7561 /* AnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D21962E0A44E0001B7561 /* AnimationView.swift */; };
 		148D219F2E0B1208001B7561 /* PreservingAnimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D219E2E0B1208001B7561 /* PreservingAnimator.swift */; };
-		148D21A12E0B1279001B7561 /* AnimationDebugger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148D21A02E0B1279001B7561 /* AnimationDebugger.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,7 +68,6 @@
 		148D21942E0A44BC001B7561 /* AnimationGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimationGenerator.swift; sourceTree = "<group>"; };
 		148D21962E0A44E0001B7561 /* AnimationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimationView.swift; sourceTree = "<group>"; };
 		148D219E2E0B1208001B7561 /* PreservingAnimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreservingAnimator.swift; sourceTree = "<group>"; };
-		148D21A02E0B1279001B7561 /* AnimationDebugger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimationDebugger.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -200,7 +198,6 @@
 			children = (
 				148D21942E0A44BC001B7561 /* AnimationGenerator.swift */,
 				148D219E2E0B1208001B7561 /* PreservingAnimator.swift */,
-				148D21A02E0B1279001B7561 /* AnimationDebugger.swift */,
 				140269C52E0F905E000DD7B4 /* ReliableSkeletalAnimator.swift */,
 			);
 			path = Animation;
@@ -350,7 +347,6 @@
 				148D21972E0A44E0001B7561 /* AnimationView.swift in Sources */,
 				148D21842E0992EC001B7561 /* AnimationType.swift in Sources */,
 				148D21542E0991C8001B7561 /* SketchAnimateApp.swift in Sources */,
-				148D21A12E0B1279001B7561 /* AnimationDebugger.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

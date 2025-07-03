@@ -9,112 +9,150 @@ class ObjectDetector {
         let bounds = calculateDrawingBounds(paths)
         let aspectRatio = bounds.height > 0 ? bounds.width / bounds.height : 1.0
         
-        // Detect human/stick figure
+        print("🔍 Object Detection Analysis:")
+        print("  - Paths: \(paths.count)")
+        print("  - Aspect ratio: \(String(format: "%.2f", aspectRatio))")
+        print("  - Bounds: \(Int(bounds.width))x\(Int(bounds.height))")
+        
+        // Detect human/stick figure (prioritize this since it's the main feature)
         if detectStickFigure(paths) {
+            print("✅ Detected: Human (stick figure)")
             return .human
         }
         
         // Detect ball/circle
-        if paths.count <= 2 && aspectRatio > 0.7 && aspectRatio < 1.3 {
-            if detectCircularShape(paths) {
-                return .ball
-            }
+        if detectBall(paths, aspectRatio: aspectRatio) {
+            print("✅ Detected: Ball")
+            return .ball
         }
         
-        // Detect box/rectangle
-        if detectRectangularShape(paths) {
-            return .box
-        }
-        
-        // Detect animal (similar to stick figure but with more horizontal elements)
-        if detectAnimal(paths) {
-            return .animal
-        }
-        
-        // Default
+        // Default to unknown for all other drawings
+        print("✅ Detected: Unknown drawing")
         return .unknown
     }
     
     // MARK: - Detection Methods
     
     private static func detectStickFigure(_ paths: [DrawingPath]) -> Bool {
-        var hasVerticalLine = false
-        var horizontalLineCount = 0
+        print("🤔 Checking for stick figure...")
         
-        for path in paths {
-            if path.isVertical && path.boundingBox.height > 50 {
-                hasVerticalLine = true
+        // Look for main body (vertical line)
+        var bodyPathIndex: Int? = nil
+        let bodyPaths = paths.enumerated().compactMap { (index, path) -> (Int, DrawingPath)? in
+            let pathBounds = path.boundingBox
+            let verticalness = pathBounds.height / max(pathBounds.width, 1)
+            if verticalness > 1.5 && pathBounds.height > 40 {
+                if bodyPathIndex == nil {
+                    bodyPathIndex = index
+                }
+                return (index, path)
             }
-            
-            if path.isHorizontal && path.boundingBox.width > 20 {
-                horizontalLineCount += 1
-            }
+            return nil
         }
         
-        // Stick figure: 1 main vertical (body) + 2-4 horizontals (arms/legs)
-        let validPathCount = paths.count >= 3 && paths.count <= 7
-        return hasVerticalLine && horizontalLineCount >= 2 && validPathCount
+        guard let mainBodyIndex = bodyPathIndex else {
+            print("  ❌ No vertical body found")
+            return false
+        }
+        
+        // Count limbs (lines extending from body area) - excluding the body path
+        let mainBodyBounds = paths[mainBodyIndex].boundingBox
+        let limbCount = paths.enumerated().filter { (index, path) in
+            guard index != mainBodyIndex else { return false }
+            
+            let pathBounds = path.boundingBox
+            let pathCenter = CGPoint(x: pathBounds.midX, y: pathBounds.midY)
+            
+            // Check if this path extends from the body area
+            let nearBody = abs(pathCenter.x - mainBodyBounds.midX) < mainBodyBounds.width + 50
+            let isLimbLike = pathBounds.width > 20 || pathBounds.height > 20
+            
+            return nearBody && isLimbLike
+        }.count
+        
+        // Check for head (circular path near top of body) - MORE FLEXIBLE
+        let hasHead = paths.contains { path in
+            let pathBounds = path.boundingBox
+            let aspectRatio = pathBounds.width / pathBounds.height
+            let nearTopOfBody = pathBounds.midY < mainBodyBounds.minY + 50 // More generous
+            let isHeadSized = pathBounds.width > 15 && pathBounds.height > 15 // Minimum size
+            let isReasonablyRound = aspectRatio > 0.4 && aspectRatio < 2.5 // More flexible
+            return isReasonablyRound && nearTopOfBody && isHeadSized && path.points.count > 5 // Fewer points needed
+        }
+        
+        // Also check for facial features (eyes, mouth) as head indicators
+        let hasFacialFeatures = paths.filter { path in
+            let pathBounds = path.boundingBox
+            let isSmallFeature = pathBounds.width < 20 && pathBounds.height < 20
+            let isInHeadArea = pathBounds.midY < mainBodyBounds.minY + 60
+            return isSmallFeature && isInHeadArea
+        }.count >= 2 // At least 2 small features (eyes, mouth, etc.)
+        
+        let validPathCount = paths.count >= 3 && paths.count <= 12 // Allow more paths for faces
+        let result = bodyPaths.count >= 1 && limbCount >= 2 && validPathCount
+        
+        print("  📊 Body paths: \(bodyPaths.count), Limbs: \(limbCount)")
+        print("  📊 Has head: \(hasHead), Facial features: \(hasFacialFeatures)")
+        print("  📊 Valid path count: \(validPathCount), Total paths: \(paths.count)")
+        print("  🎯 Stick figure result: \(result)")
+        
+        // Accept if has basic structure, bonus for head or facial features
+        return result && (limbCount >= 3 || hasHead || hasFacialFeatures)
     }
     
-    private static func detectCircularShape(_ paths: [DrawingPath]) -> Bool {
-        guard let mainPath = paths.first, mainPath.points.count > 10 else { return false }
+    private static func detectBall(_ paths: [DrawingPath], aspectRatio: Double) -> Bool {
+        print("🤔 Checking for ball...")
         
-        let center = CGPoint(
-            x: mainPath.points.map { $0.x }.reduce(0, +) / CGFloat(mainPath.points.count),
-            y: mainPath.points.map { $0.y }.reduce(0, +) / CGFloat(mainPath.points.count)
-        )
+        // Simple shapes with roughly square bounds
+        guard paths.count <= 3 && aspectRatio > 0.6 && aspectRatio < 1.5 else {
+            print("  ❌ Wrong path count (\(paths.count)) or aspect ratio (\(String(format: "%.2f", aspectRatio))) for ball")
+            return false
+        }
         
-        let distances = mainPath.points.map { point in
+        // Check if main path looks circular
+        if let mainPath = paths.max(by: { $0.points.count < $1.points.count }) {
+            let isCircular = isPathCircular(mainPath)
+            print("  📊 Main path circular: \(isCircular), Points: \(mainPath.points.count)")
+            print("  🎯 Ball result: \(isCircular)")
+            return isCircular
+        }
+        
+        return false
+    }
+    
+    // Enhanced circular detection
+    private static func isPathCircular(_ path: DrawingPath) -> Bool {
+        guard path.points.count > 15 else {
+            print("    ❌ Too few points for circle: \(path.points.count)")
+            return false
+        }
+        
+        // Calculate center
+        let centerX = path.points.map { $0.x }.reduce(0, +) / CGFloat(path.points.count)
+        let centerY = path.points.map { $0.y }.reduce(0, +) / CGFloat(path.points.count)
+        let center = CGPoint(x: centerX, y: centerY)
+        
+        // Check if points are roughly equidistant from center
+        let distances = path.points.map { point in
             sqrt(pow(point.x - center.x, 2) + pow(point.y - center.y, 2))
         }
         
         let avgDistance = distances.reduce(0, +) / CGFloat(distances.count)
         let variance = distances.map { pow($0 - avgDistance, 2) }.reduce(0, +) / CGFloat(distances.count)
         
-        // Low variance indicates points are roughly equidistant from center (circular)
-        return variance < pow(avgDistance * 0.3, 2)
-    }
-    
-    private static func detectRectangularShape(_ paths: [DrawingPath]) -> Bool {
-        guard paths.count >= 3 && paths.count <= 6 else { return false }
+        // Circle detection criteria
+        let hasGoodRadius = avgDistance > 25 // Minimum radius
+        let hasLowVariance = variance < pow(avgDistance * 0.3, 2)
+        let isCircular = hasGoodRadius && hasLowVariance
         
-        var verticalLines = 0
-        var horizontalLines = 0
+        print("    🔍 Circle analysis:")
+        print("      - Avg radius: \(Int(avgDistance))")
+        print("      - Variance: \(Int(variance))")
+        print("      - Good radius: \(hasGoodRadius)")
+        print("      - Low variance: \(hasLowVariance)")
+        print("      - Is circular: \(isCircular)")
         
-        for path in paths {
-            if path.isVertical {
-                verticalLines += 1
-            } else if path.isHorizontal {
-                horizontalLines += 1
-            }
-        }
-        
-        // Box should have at least 2 vertical and 2 horizontal lines
-        return verticalLines >= 2 && horizontalLines >= 2
-    }
-    
-    private static func detectAnimal(_ paths: [DrawingPath]) -> Bool {
-        // Animal detection: body + multiple limbs + possible tail
-        // Similar to stick figure but typically more horizontal elements
-        let bounds = calculateDrawingBounds(paths)
-        let aspectRatio = bounds.width / bounds.height
-        
-        var bodyPaths = 0
-        var limbCount = 0
-        
-        for path in paths {
-            if path.boundingBox.width > path.boundingBox.height {
-                // Horizontal-ish = potential body or limb
-                if path.boundingBox.width > 50 {
-                    bodyPaths += 1
-                } else {
-                    limbCount += 1
-                }
-            }
-        }
-        
-        // Animal: wider than tall, multiple horizontal elements
-        return aspectRatio > 1.2 && bodyPaths >= 1 && limbCount >= 2 && paths.count >= 4
+        return isCircular
     }
     
     // MARK: - Helper Methods
@@ -143,15 +181,30 @@ class ObjectDetector {
         let bounds = calculateDrawingBounds(paths)
         let aspectRatio = bounds.width / bounds.height
         
-        let verticalPaths = paths.filter { $0.isVertical }
-        let horizontalPaths = paths.filter { $0.isHorizontal }
+        let verticalPaths = paths.filter { path in
+            let pathBounds = path.boundingBox
+            let verticalness = pathBounds.height / max(pathBounds.width, 1)
+            return verticalness > 1.5 && pathBounds.height > 40
+        }
+        
+        let horizontalPaths = paths.filter { path in
+            let pathBounds = path.boundingBox
+            let horizontalness = pathBounds.width / max(pathBounds.height, 1)
+            return horizontalness > 1.5 && pathBounds.width > 20
+        }
         
         var info = "Detection Analysis:\n"
         info += "- Total paths: \(paths.count)\n"
         info += "- Vertical paths: \(verticalPaths.count)\n"
         info += "- Horizontal paths: \(horizontalPaths.count)\n"
         info += "- Aspect ratio: \(String(format: "%.2f", aspectRatio))\n"
-        info += "- Bounds: \(Int(bounds.width))x\(Int(bounds.height))"
+        info += "- Bounds: \(Int(bounds.width))x\(Int(bounds.height))\n"
+        
+        // Add path details
+        for (index, path) in paths.enumerated() {
+            let bounds = path.boundingBox
+            info += "- Path \(index): \(Int(bounds.width))x\(Int(bounds.height)), \(path.points.count) points\n"
+        }
         
         return info
     }
